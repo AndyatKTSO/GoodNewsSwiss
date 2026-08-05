@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Good News Schweiz – Positive Nachrichten aus Schweiz</title>
+<title>GoodNews SWISS – Positive Nachrichten aus der Schweiz</title>
 <meta name="description" content="Gute Nachrichten aus der Schweiz, automatisch aktualisiert.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -331,16 +331,16 @@
         </g>
       </svg>
       <div class="brand-text">
-        <h1>GoodNews Schweiz</h1>
+        <h1>GoodNews SWISS</h1>
         <p>Positive Nachrichten aus der Schweiz</p>
       </div>
     </div>
     <div class="status-panel">
       <span class="live-dot" aria-hidden="true"></span>
       <span id="statusText">wird geladen …</span>
-      <button class="refresh-btn" id="refreshBtn" type="button">
+      <button class="refresh-btn" id="sourceToggleBtn" type="button">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
-        Jetzt aktualisieren
+        <span id="sourceToggleLabel">Archiv</span>
       </button>
     </div>
   </div>
@@ -383,7 +383,10 @@ const CONFIG = {
   // GID des Tabs "Publizierte_Meldungen" – hier liegen ausschliesslich
   // bereits freigegebene Beiträge, daher wird nicht mehr nach Status
   // oder Ist_positiv gefiltert.
-  gid: '264607036',
+  gidCurrent: '264607036',
+
+  // GID des Meldungsarchivs (frühere/archivierte Meldungen).
+  gidArchive: '699439198',
 
   // Sheet muss für "Jeder mit Link -> Betrachter" freigegeben sein,
   // sonst schlägt der Live-Abruf fehl.
@@ -410,6 +413,8 @@ const state = {
   knownKeys: new Set(),
   firstLoad: true,
   loading: false,
+  viewingArchive: false,
+  gid: CONFIG.gidCurrent,
 };
 
 const els = {
@@ -418,7 +423,8 @@ const els = {
   search: document.getElementById('searchInput'),
   statusText: document.getElementById('statusText'),
   lastUpdated: document.getElementById('lastUpdated'),
-  refreshBtn: document.getElementById('refreshBtn'),
+  sourceToggleBtn: document.getElementById('sourceToggleBtn'),
+  sourceToggleLabel: document.getElementById('sourceToggleLabel'),
   toast: document.getElementById('toast'),
   toastText: document.getElementById('toastText'),
 };
@@ -468,7 +474,7 @@ function fetchSheet(){
     };
     const url = 'https://docs.google.com/spreadsheets/d/' + CONFIG.sheetId +
       '/gviz/tq?tqx=out:json;responseHandler:' + cbName +
-      '&gid=' + encodeURIComponent(CONFIG.gid) +
+      '&gid=' + encodeURIComponent(state.gid) +
       '&headers=1&_=' + Date.now();
     script.src = url;
     document.body.appendChild(script);
@@ -630,7 +636,7 @@ function showError(message){
 async function loadData(){
   if (state.loading) return;
   state.loading = true;
-  els.refreshBtn.classList.add('is-loading');
+  els.sourceToggleBtn.classList.add('is-loading');
   els.statusText.textContent = 'wird aktualisiert …';
 
   try {
@@ -663,7 +669,7 @@ async function loadData(){
     els.statusText.textContent = 'Fehler beim Laden';
   } finally {
     state.loading = false;
-    els.refreshBtn.classList.remove('is-loading');
+    els.sourceToggleBtn.classList.remove('is-loading');
   }
 }
 
@@ -698,7 +704,14 @@ els.search.addEventListener('input', e => {
   state.searchTerm = e.target.value;
   render();
 });
-els.refreshBtn.addEventListener('click', () => { loadData(); });
+els.sourceToggleBtn.addEventListener('click', () => {
+  if (state.loading) return;
+  state.viewingArchive = !state.viewingArchive;
+  state.gid = state.viewingArchive ? CONFIG.gidArchive : CONFIG.gidCurrent;
+  state.firstLoad = true; // beim Quellenwechsel keine "Neu"-Badges/Toasts
+  els.sourceToggleLabel.textContent = state.viewingArchive ? 'Aktuelle Meldungen' : 'Archiv';
+  loadData();
+});
 
 /* --- Start --- */
 loadData();
